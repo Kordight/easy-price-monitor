@@ -33,7 +33,7 @@ def main():
 
     results = []
 
-    for product in products:
+    for idx, product in enumerate(products):
         product_name = product["name"]
         print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Monitoring product: {product_name}")
 
@@ -50,9 +50,10 @@ def main():
                 })
             except Exception as e:
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] {product_name} - {shop['name']}: {e}")
-            # Random delay between requests
-            if interval:
-                sleep_with_log(interval)
+        
+        # Random delay between products (not after the last product)
+        if interval and idx < len(products) - 1:
+            sleep_with_log(interval)
 
     # dynamic handlers execution
     if args.handlers:
