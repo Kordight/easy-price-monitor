@@ -4,7 +4,7 @@ import random
 from time import sleep
 
 from pricephraser.core import get_price
-from storage import STORAGE_HANDLERS, get_changes_mysql, get_all_product_ids_mysql
+from storage import STORAGE_HANDLERS, get_changes_mysql, get_changes_csv, get_all_product_ids_mysql
 from visualization import PLOT_HANDLERS
 from utils import load_products, load_app_config
 from notifier import send_email_alert
@@ -17,9 +17,10 @@ settings = load_app_config(DEFAULT_APP_CONFIG)
 interval = settings[0]["interval"][0] if settings[0].get("bUseDelayInterval") else None
 
 def sleep_with_log(interval):
-    """Ramdom sleep delay"""
+    """Random sleep delay"""
     time_to_wait = random.randint(interval["minIntervalSeconds"], interval["maxInterval"])
-    print(f"[{datetime.now()}] Waiting {time_to_wait}s until [{datetime.now() + timedelta(seconds=time_to_wait)}]")
+    wait_until = datetime.now() + timedelta(seconds=time_to_wait)
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Waiting {time_to_wait}s until {wait_until.strftime('%Y-%m-%d %H:%M:%S')}")
     sleep(time_to_wait)
 
 
@@ -32,14 +33,14 @@ def main():
 
     results = []
 
-    for product in products:
+    for idx, product in enumerate(products):
         product_name = product["name"]
-        print(f"\nProduct price monitoring: {product_name}\n")
+        print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Monitoring product: {product_name}")
 
         for shop in product["shops"]:
             try:
                 price = get_price(shop)
-                print(f"[{datetime.now()}] {shop['name']}: {price} PLN")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] {product_name} - {shop['name']}: {price} PLN")
                 results.append({
                     "product": product_name,
                     "shop": shop["name"],
@@ -48,10 +49,11 @@ def main():
                     "product_url": shop["url"]
                 })
             except Exception as e:
-                print(f"[{shop['name']}] Error: {e}")
-            # Random delay between requests
-            if interval:
-                sleep_with_log(interval)
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] {product_name} - {shop['name']}: {e}")
+        
+        # Random delay between products (not after the last product)
+        if interval and idx < len(products) - 1:
+            sleep_with_log(interval)
 
     # dynamic handlers execution
     if args.handlers:
@@ -62,12 +64,13 @@ def main():
             elif handler_name in PLOT_HANDLERS:
                 PLOT_HANDLERS[handler_name](results)
             else:
-                print(f"Invalid handler: {handler_name}")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] Invalid handler: {handler_name}")
     alerts_config = settings[0]["alerts"]
     if not alerts_config.get("bEnableAlerts", True):
-        print("Alerts are disabled in config.")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Alerts are disabled in config.")
         return
     percent_threshold = alerts_config["percentDropThreshold"]
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Alert threshold set to {percent_threshold}%")
     smtp_config = {
         "server": settings[0]["email"]["smtpServer"],
         "port": settings[0]["email"]["smtpPort"],
@@ -76,36 +79,78 @@ def main():
     }
     email_from = settings[0]["email"]["from"]
     email_to = settings[0]["email"]["to"]
-    changes = []
+    
+    # Collect changes from all handlers (consolidate to send only one email)
+    all_changes = []
+    handlers_used = []
+    
     for handler_name in args.handlers or []:
         handler_name = handler_name.lower()
         if handler_name in STORAGE_HANDLERS:
-            PRODUCT_IDS = []
             if handler_name == "mysql":
+                handlers_used.append("MySQL")
                 PRODUCT_IDS = settings[0]["alerts"].get("ProductIDs", [])
                 if not PRODUCT_IDS:
                     PRODUCT_IDS = get_all_product_ids_mysql()
                 changes = get_changes_mysql(PRODUCT_IDS)
-                print(f"Found {len(PRODUCT_IDS)} to alert")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Checking {len(PRODUCT_IDS)} product(s) for price changes in MySQL")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Found {len(changes)} price record(s) in MySQL")
+                all_changes.extend(changes)
             elif handler_name == "csv":
-                print("CSV handler does not support alerts.")
+                handlers_used.append("CSV")
+                changes = get_changes_csv()
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Checking for price changes in CSV")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Found {len(changes)} price record(s) in CSV")
+                all_changes.extend(changes)
         elif handler_name in PLOT_HANDLERS:
             PLOT_HANDLERS[handler_name](results)
         else:
-            print(f"Invalid handler: {handler_name}")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] Invalid handler: {handler_name}")
 
-    if changes:
+    # Remove duplicate changes (same product_name and shop_name)
+    if all_changes:
+        seen = set()
+        unique_changes = []
+        for change in all_changes:
+            key = (change['product_name'], change['shop_name'])
+            if key not in seen:
+                seen.add(key)
+                unique_changes.append(change)
+        all_changes = unique_changes
+        
+        if len(handlers_used) > 1:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Consolidated {len(all_changes)} unique price change(s) from {' and '.join(handlers_used)}")
+    
+    if all_changes:
         alerts = []
-        for c in changes:
+        for c in all_changes:
             percent = c.get("percent_change")
+            price_diff = c.get("price_diff")
             if percent is not None:
                 percent_float = float(percent)
+                diff_float = float(price_diff) if price_diff is not None else 0.0
+                direction = "↑" if diff_float > 0 else "↓" if diff_float < 0 else "→"
+                
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Price change detected: "
+                      f"{c['product_name']} at {c['shop_name']}: "
+                      f"{diff_float:+.2f} PLN ({percent_float:+.2f}%) {direction} "
+                      f"Current: {c['price']} PLN")
+                
                 if abs(percent_float) >= percent_threshold:
-                    print(f"[Price Change]: product_id={c['product_id']}, shop={c['shop_name']}, price={c['price']}, percent_change={percent_float}")
+                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ALERT] Threshold exceeded for {c['product_name']}: "
+                          f"{abs(percent_float):.2f}% >= {percent_threshold}%")
                     alerts.append(c)
-        send_email_alert(alerts, smtp_config, email_from, email_to)
+                else:
+                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Below threshold: "
+                          f"{abs(percent_float):.2f}% < {percent_threshold}%")
+        
+        if alerts:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Sending {len(alerts)} alert(s) via email")
+            send_email_alert(alerts, smtp_config, email_from, email_to)
+        else:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] No price changes exceeded the alert threshold")
     else:
-        print("No price changes detected.")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] No price changes detected")
 
 if __name__ == "__main__":
     main()
