@@ -1,6 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from datetime import datetime
 from storage import get_product_url_by_id_mysql, get_shop_id_by_name_mysql
 
 
@@ -8,8 +9,6 @@ def send_email_alert(changes, smtp_config, email_from, email_to):
     if not changes:
         return
 
-    from datetime import datetime
-    
     subject = "[Easy Price Monitor] Alert: Price Change Detected"
     changed_products = []
 
@@ -119,7 +118,6 @@ def send_email_alert(changes, smtp_config, email_from, email_to):
     port = smtp_config["port"]
     
     host = smtp_config["server"]
-    from datetime import datetime
     try:
         if port == 465:
             # SSL

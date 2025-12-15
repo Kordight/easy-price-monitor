@@ -87,7 +87,6 @@ def save_price_mysql(results, db_config, commit_every=500):
                         ON DUPLICATE KEY UPDATE product_url = VALUES(product_url)
                     """, (product_id, product_url, shop_id))
                 else:
-                    from datetime import datetime
                     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [WARNING] No product_url found for product '{product_name}' at shop '{shop_name}'")
 
                 # 4) Insert price record
@@ -103,16 +102,13 @@ def save_price_mysql(results, db_config, commit_every=500):
 
             except Exception as e_inner:
                 # Log the error and continue with the next row
-                from datetime import datetime
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] MySQL error saving row {row!r}: {e_inner}")
                 continue
 
         conn.commit()
-        from datetime import datetime
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] MySQL: Saved {count} price record(s) to database")
 
     except mysql.connector.Error as e:
-        from datetime import datetime
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] MySQL connection error: {e}")
     finally:
         if conn is not None and conn.is_connected():
