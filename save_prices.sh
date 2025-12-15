@@ -4,7 +4,7 @@
 # Settings
 # ===============================
 
-PROJECT_DIR="/home/sebastian/easy-price-monitor" #Replace with yours project path
+PROJECT_DIR="/home/sebastian/projects/easy-price-monitor" #Replace with yours project path
 LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/debug.log"
 VENV_DIR="$PROJECT_DIR/venv"
