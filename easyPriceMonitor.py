@@ -4,7 +4,7 @@ import random
 from time import sleep
 
 from pricephraser.core import get_price
-from storage import STORAGE_HANDLERS, get_changes_mysql, get_all_product_ids_mysql
+from storage import STORAGE_HANDLERS, get_changes_mysql, get_changes_csv, get_all_product_ids_mysql
 from visualization import PLOT_HANDLERS
 from utils import load_products, load_app_config
 from notifier import send_email_alert
@@ -78,28 +78,51 @@ def main():
     }
     email_from = settings[0]["email"]["from"]
     email_to = settings[0]["email"]["to"]
-    changes = []
+    
+    # Collect changes from all handlers (consolidate to send only one email)
+    all_changes = []
+    handlers_used = []
+    
     for handler_name in args.handlers or []:
         handler_name = handler_name.lower()
         if handler_name in STORAGE_HANDLERS:
-            PRODUCT_IDS = []
             if handler_name == "mysql":
+                handlers_used.append("MySQL")
                 PRODUCT_IDS = settings[0]["alerts"].get("ProductIDs", [])
                 if not PRODUCT_IDS:
                     PRODUCT_IDS = get_all_product_ids_mysql()
                 changes = get_changes_mysql(PRODUCT_IDS)
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Checking {len(PRODUCT_IDS)} product(s) for price changes")
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Found {len(changes)} price record(s)")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Checking {len(PRODUCT_IDS)} product(s) for price changes in MySQL")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Found {len(changes)} price record(s) in MySQL")
+                all_changes.extend(changes)
             elif handler_name == "csv":
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] CSV handler does not support alerts.")
+                handlers_used.append("CSV")
+                changes = get_changes_csv()
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Checking for price changes in CSV")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Found {len(changes)} price record(s) in CSV")
+                all_changes.extend(changes)
         elif handler_name in PLOT_HANDLERS:
             PLOT_HANDLERS[handler_name](results)
         else:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] Invalid handler: {handler_name}")
 
-    if changes:
+    # Remove duplicate changes (same product_name and shop_name)
+    if all_changes:
+        seen = set()
+        unique_changes = []
+        for change in all_changes:
+            key = (change['product_name'], change['shop_name'])
+            if key not in seen:
+                seen.add(key)
+                unique_changes.append(change)
+        all_changes = unique_changes
+        
+        if len(handlers_used) > 1:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Consolidated {len(all_changes)} unique price change(s) from {' and '.join(handlers_used)}")
+    
+    if all_changes:
         alerts = []
-        for c in changes:
+        for c in all_changes:
             percent = c.get("percent_change")
             price_diff = c.get("price_diff")
             if percent is not None:

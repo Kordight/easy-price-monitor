@@ -9,11 +9,20 @@ def send_email_alert(changes, smtp_config, email_from, email_to):
     if not changes:
         return
 
+    # Support both single string and list of recipients
+    if isinstance(email_to, str):
+        recipients = [email_to]
+    else:
+        recipients = email_to
+    
+    # Join recipients for the email header
+    email_to_header = ", ".join(recipients)
+
     subject = "[Easy Price Monitor] Alert: Price Change Detected"
     changed_products = []
 
     for c in changes:
-        url = get_product_url_by_id_mysql(c['product_id'], get_shop_id_by_name_mysql(c['shop_name']))
+        url = get_product_url_by_id_mysql(c['product_id'], get_shop_id_by_name_mysql(c['shop_name'])) if 'product_id' in c else c.get('product_url', '')
         changed_products.append(
             f"<li><a href='{url}'>{c['product_name']}</a> at {c['shop_name']}: "
             f"(change: <b>{c['price_diff']} {c['currency']}, {c['percent_change']} % change {'↑' if c['price_diff'] > 0 else '↓' if c['price_diff'] < 0 else '→'})</b>"
@@ -24,7 +33,7 @@ def send_email_alert(changes, smtp_config, email_from, email_to):
 
     msg = MIMEMultipart()
     msg["From"] = email_from
-    msg["To"] = email_to
+    msg["To"] = email_to_header
     msg["Subject"] = subject
     body = f"""
     <!DOCTYPE html>
@@ -124,7 +133,7 @@ def send_email_alert(changes, smtp_config, email_from, email_to):
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Connecting to SMTP server {host}:{port} using SSL")
             with smtplib.SMTP_SSL(host, port) as smtp:
                 smtp.login(smtp_config["user"], smtp_config["password"])
-                smtp.send_message(msg)
+                smtp.send_message(msg, to_addrs=recipients)
         else:
             # STARTTLS
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Connecting to SMTP server {host}:{port} using STARTTLS")
@@ -133,9 +142,9 @@ def send_email_alert(changes, smtp_config, email_from, email_to):
                 smtp.starttls()
                 smtp.ehlo()
                 smtp.login(smtp_config["user"], smtp_config["password"])
-                smtp.send_message(msg)
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Email alert sent successfully to {email_to}")
+                smtp.send_message(msg, to_addrs=recipients)
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Email alert sent successfully to {email_to_header}")
     except Exception as e:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] Failed to send email to {email_to}: {e}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] Failed to send email to {email_to_header}: {e}")
 
 

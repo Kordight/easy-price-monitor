@@ -83,7 +83,7 @@ DEFAULT_APP_CONFIG = {
                 "user": "source@gmail.com",
                 "password": "password",
                 "from": "source@gmail.com",
-                "to": "target@gmail.com"
+                "to": ["target@gmail.com"]  # Can be a list or a single string
             }
         }
     ]
