@@ -19,7 +19,9 @@ However, in [docs/grafana.md](docs/grafana.md) you can find a template to visual
 - Saving price records to CSV
 - **MySQL support**
 - Lightweight
-- **Built-in email alerting system for MySQL.**
+- **Built-in email alerting system for both MySQL and CSV**
+- **Support for multiple email recipients**
+- **Automatic alert consolidation when using multiple handlers**
 
 ---
 
@@ -130,6 +132,51 @@ This file is **automatically created if it does not exist**.
   }
 }
 ```
+
+---
+
+### Configuring Email Alerts
+
+To configure email alerts, edit `easyPrice_monitor_config.json`.
+This file is **automatically created if it does not exist**.
+
+**Example structure:**
+
+```json
+{
+  "settings": [
+    {
+      "bUseDelayInterval": true,
+      "interval": [
+        {
+          "minIntervalSeconds": 5,
+          "maxInterval": 20
+        }
+      ],
+      "alerts": {
+        "bEnableAlerts": true,
+        "percentDropThreshold": 3.5,
+        "ProductIDs": []
+      },
+      "email": {
+        "smtpServer": "smtp.gmail.com",
+        "smtpPort": 587,
+        "user": "source@gmail.com",
+        "password": "your-app-password",
+        "from": "source@gmail.com",
+        "to": ["recipient1@example.com", "recipient2@example.com"]
+      }
+    }
+  ]
+}
+```
+
+**Notes:**
+- `bEnableAlerts`: Enable or disable email alerts
+- `percentDropThreshold`: Minimum percentage change to trigger an alert (e.g., 3.5 means ±3.5%)
+- `ProductIDs`: List of specific product IDs to monitor, or empty array `[]` for all products
+- `email.to`: Can be a single email address as a string, or an array of multiple recipients
+- **When using both CSV and MySQL handlers**, only one consolidated email will be sent
 
 ---
 
