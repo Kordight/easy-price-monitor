@@ -12,4 +12,4 @@ def save_price_csv(results):
             writer.writeheader()
         for row in results:
             writer.writerow(row)
-    print(f"[CSV] Saved {len(results)} records to: {CSV_FILE}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] CSV: Saved {len(results)} price record(s) to {CSV_FILE}")

@@ -28,10 +28,11 @@ DEFAULT_PRODUCTS = {
 
 def load_products(PRODUCTS_FILE):
     """Load products from JSON file, if not create default file"""
+    from datetime import datetime
     if not os.path.exists(PRODUCTS_FILE):
         with open(PRODUCTS_FILE, "w", encoding="utf-8") as f:
             json.dump(DEFAULT_PRODUCTS, f, indent=4, ensure_ascii=False)
-        print(f"[INFO] Created default product list: {PRODUCTS_FILE}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Created default product list: {PRODUCTS_FILE}")
 
     with open(PRODUCTS_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -51,10 +52,11 @@ DEFAULT_MYSQL_CONFIG = {
 
 def load_mysql_config(MYSQL_CONFIG):
     """Load MySQL config from JSON file, if not create default file"""
+    from datetime import datetime
     if not os.path.exists(MYSQL_CONFIG):
         with open(MYSQL_CONFIG, "w", encoding="utf-8") as f:
             json.dump(DEFAULT_MYSQL_CONFIG, f, indent=4, ensure_ascii=False)
-        print(f"[INFO] Created default mySQL config file: {MYSQL_CONFIG}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Created default MySQL config file: {MYSQL_CONFIG}")
         return DEFAULT_MYSQL_CONFIG["connection"]
 
     with open(MYSQL_CONFIG, "r", encoding="utf-8") as f:
@@ -90,10 +92,11 @@ DEFAULT_APP_CONFIG = {
 
 def load_app_config(app_config_path):
     """Load app config from JSON file, if not create default file"""
+    from datetime import datetime
     if not os.path.exists(app_config_path):
         with open(app_config_path, "w", encoding="utf-8") as f:
             json.dump(DEFAULT_APP_CONFIG, f, indent=4, ensure_ascii=False)
-        print(f"[INFO] Utworzono domyślny plik {app_config_path}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Created default config file: {app_config_path}")
         return DEFAULT_APP_CONFIG["settings"]
 
     with open(app_config_path, "r", encoding="utf-8") as f:
