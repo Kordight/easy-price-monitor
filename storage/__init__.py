@@ -12,6 +12,9 @@ def get_changes_mysql(product_ids):
     db_config = load_mysql_config("mysql_config.json")
     return mysql_storage.get_price_changes(db_config, product_ids)
 
+def get_changes_csv():
+    return csv_storage.get_price_changes_csv()
+
 def get_all_product_ids_mysql():
     db_config = load_mysql_config("mysql_config.json")
     return mysql_storage.get_all_product_ids(db_config)

@@ -87,7 +87,7 @@ def save_price_mysql(results, db_config, commit_every=500):
                         ON DUPLICATE KEY UPDATE product_url = VALUES(product_url)
                     """, (product_id, product_url, shop_id))
                 else:
-                    print(f"[MySQL] no product_url found for product_name='{product_name}' shop='{shop_name}'")
+                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [WARNING] No product_url found for product '{product_name}' at shop '{shop_name}'")
 
                 # 4) Insert price record
                 cursor.execute("""
@@ -102,14 +102,14 @@ def save_price_mysql(results, db_config, commit_every=500):
 
             except Exception as e_inner:
                 # Log the error and continue with the next row
-                print(f"[MySQL] Error saving row: {row!r}: {e_inner}")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] MySQL error saving row {row!r}: {e_inner}")
                 continue
 
         conn.commit()
-        print(f"[MySQL] Saved {count} records to table 'prices' (and upserted URLs where present).")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] MySQL: Saved {count} price record(s) to database")
 
     except mysql.connector.Error as e:
-        print(f"[MySQL] Error: {e}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] MySQL connection error: {e}")
     finally:
         if conn is not None and conn.is_connected():
             cursor.close()
@@ -149,7 +149,7 @@ def get_price_changes(db_config, product_ids):
             FROM prices pr
             JOIN products p ON p.id = pr.product_id
             JOIN shops s ON s.id = pr.shop_id
-            JOIN product_urls pd ON pd.id = pr.product_id
+            JOIN product_urls pd ON pd.product_id = pr.product_id AND pd.shop_id = pr.shop_id
             WHERE pr.product_id IN ({",".join(map(str, product_ids))})
         ) t
         WHERE rn = 1
