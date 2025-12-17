@@ -1,8 +1,29 @@
+"""
+X-Kom Price Parser
+
+This module extracts product prices from X-Kom (x-kom.pl), a popular Polish
+electronics and computer hardware retailer. Uses web scraping with cloudscraper
+to handle anti-bot protection and BeautifulSoup for HTML parsing.
+"""
 import cloudscraper
 from bs4 import BeautifulSoup
 
 def get_price_xkom(url):
-    """Downloads and parses the product page from X-Kom to extract the price."""
+    """
+    Downloads and parses the product page from X-Kom to extract the price.
+    
+    X-Kom is a popular Polish electronics retailer. This function scrapes their product
+    pages to extract pricing information from specific HTML elements.
+    
+    Args:
+        url: Product page URL on x-kom.pl
+        
+    Returns:
+        Float representing the product price in PLN
+        
+    Raises:
+        Exception: If the page cannot be downloaded or price cannot be found
+    """
     scraper = cloudscraper.create_scraper()
     response = scraper.get(url)
     if response.status_code != 200:

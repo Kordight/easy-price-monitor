@@ -1,6 +1,6 @@
 # mySQL
 
-Work in progres...
+Work in progress...
 
 ## Database structure
 

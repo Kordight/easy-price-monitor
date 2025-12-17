@@ -1,3 +1,16 @@
+"""
+MySQL Storage Module for Easy Price Monitor
+
+This module handles saving and retrieving price data from MySQL database.
+Creates necessary tables automatically and maintains a relational structure with:
+- products: Product information (identified by name)
+- shops: Shop information
+- prices: Historical price records
+- product_urls: Product URLs for each shop
+
+Uses product names as the primary identifier (refactored from URL-based lookup)
+for improved flexibility when products have changing URLs.
+"""
 import mysql.connector
 from mysql.connector import Error
 from datetime import datetime
@@ -43,6 +56,17 @@ def ensure_tables_exist(cursor):
 
 
 def save_price_mysql(results, db_config, commit_every=500):
+    """
+    Saves price data to MySQL database.
+    
+    Creates necessary tables if they don't exist, then inserts product, shop, and price records.
+    Uses product names instead of URLs as the primary identifier.
+    
+    Args:
+        results: List of dictionaries containing product, shop, price, date, and product_url
+        db_config: Database configuration dictionary with connection parameters
+        commit_every: Number of records to process before committing (default: 500)
+    """
     conn = None
     try:
         conn = mysql.connector.connect(**db_config)
@@ -116,6 +140,18 @@ def save_price_mysql(results, db_config, commit_every=500):
             conn.close()
 
 def get_price_changes(db_config, product_ids):
+    """
+    Retrieves the most recent price changes for specified products from MySQL database.
+    
+    Uses window functions to compare current prices with previous prices and calculate
+    the percentage change. Only returns the most recent record for each product-shop combination.
+    
+    Args:
+        product_ids: List of product IDs to check for price changes
+        
+    Returns:
+        List of dictionaries containing product info, prices, and percentage changes
+    """
     # Guard against empty list to avoid SQL 'IN ()' syntax error
     if not product_ids:
         return []
@@ -175,6 +211,15 @@ def get_price_changes(db_config, product_ids):
     return list(latest.values())
 
 def get_all_product_ids(db_config):
+    """
+    Retrieves all product IDs from the MySQL database.
+    
+    Args:
+        db_config: Database configuration dictionary with connection parameters
+        
+    Returns:
+        List of product IDs
+    """
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor()
 
@@ -186,6 +231,16 @@ def get_all_product_ids(db_config):
     return [row[0] for row in rows]
 
 def get_shop_id_by_name(db_config, shop_name):
+    """
+    Retrieves the shop ID for a given shop name.
+    
+    Args:
+        db_config: Database configuration dictionary with connection parameters
+        shop_name: Name of the shop to look up
+        
+    Returns:
+        Shop ID if found, None otherwise
+    """
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor()
 
@@ -197,6 +252,17 @@ def get_shop_id_by_name(db_config, shop_name):
     return row[0] if row else None
 
 def get_product_url_by_id(db_config, product_id, shop_id):
+    """
+    Retrieves the product URL for a given product ID and shop ID.
+    
+    Args:
+        db_config: Database configuration dictionary with connection parameters
+        product_id: Product ID to look up
+        shop_id: Shop ID to look up
+        
+    Returns:
+        Product URL if found, None otherwise
+    """
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor()
     cursor.execute("""
@@ -210,6 +276,19 @@ def get_product_url_by_id(db_config, product_id, shop_id):
     return row[0] if row else None
 
 def get_product_id_by_name(db_config, product_name):
+    """
+    Retrieves the product ID for a given product name.
+    
+    This function is used as part of the refactored approach where products are
+    identified by name instead of URL, making the system more flexible.
+    
+    Args:
+        db_config: Database configuration dictionary with connection parameters
+        product_name: Name of the product to look up
+        
+    Returns:
+        Product ID if found, None otherwise
+    """
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor()
     cursor.execute("""

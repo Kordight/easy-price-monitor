@@ -1,3 +1,20 @@
+"""
+Easy Price Monitor - Main Application Script
+
+This script monitors product prices from various online stores and saves the data
+to CSV files and/or MySQL database. It supports email alerts for significant price
+changes and can be scheduled to run automatically.
+
+The script uses a plugin-based architecture for supporting different online stores,
+making it easy to add new retailers. Currently supports Polish tech stores like
+X-Kom and MediaExpert.
+
+Usage:
+    python easyPriceMonitor.py --handlers [csv,mysql]
+    
+Example:
+    python easyPriceMonitor.py --handlers csv mysql
+"""
 from datetime import datetime, timedelta
 import argparse
 import random
@@ -19,13 +36,25 @@ product_names = []
 
 
 def sleep_with_log(interval):
-    """Random sleep delay"""
+    """
+    Implements a random sleep delay between product scraping to avoid overwhelming the server.
+    
+    Args:
+        interval: Dictionary containing 'minIntervalSeconds' and 'maxInterval' keys
+    """
     time_to_wait = random.randint(interval["minIntervalSeconds"], interval["maxInterval"])
     wait_until = datetime.now() + timedelta(seconds=time_to_wait)
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Waiting {time_to_wait}s until {wait_until.strftime('%Y-%m-%d %H:%M:%S')}")
     sleep(time_to_wait)
 
 def main():
+    """
+    Main entry point for the Easy Price Monitor application.
+    
+    Parses command line arguments, loads product configurations, scrapes prices from
+    configured shops, saves the data using specified handlers, and sends email alerts
+    for significant price changes.
+    """
     parser = argparse.ArgumentParser(description="Easy Price Monitor")
     parser.add_argument("--handlers", nargs="+", help="List of handlers to run  (csv, mysql, default)")
     args = parser.parse_args()
@@ -98,6 +127,7 @@ def main():
                 PRODUCT_IDS = settings[0]["alerts"].get("ProductIDs", [])
                 if not PRODUCT_IDS:
                     # If no specific product IDs are set, monitor all products from the products list
+                    # Products are identified by name (refactored from URL-based lookup)
                     for name in product_names:
                         product_id = get_product_id_by_name_mysql(name)
                         if product_id:
@@ -131,7 +161,8 @@ def main():
         if len(handlers_used) > 1:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Consolidated {len(all_changes)} unique price change(s) from {' and '.join(handlers_used)}")
 
-    # If any product-shop failed in this run, ignore them in alerts
+    # If any product-shop combination failed during scraping in this run, 
+    # exclude them from alerts to avoid false alerts based on stale data
     if all_changes and scrape_errors:
         before = len(all_changes)
         filtered = []

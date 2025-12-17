@@ -1,3 +1,13 @@
+"""
+Utility Functions for Easy Price Monitor
+
+This module provides utility functions for loading configuration files including:
+- Product watchlist (products.json)
+- MySQL database configuration (mysql_config.json)
+- Application settings (easyPrice_monitor_config.json)
+
+All configuration files are automatically created with sensible defaults if they don't exist.
+"""
 import json
 import os
 from datetime import datetime
@@ -28,7 +38,18 @@ DEFAULT_PRODUCTS = {
 }
 
 def load_products(PRODUCTS_FILE):
-    """Load products from JSON file, if not create default file"""
+    """
+    Loads products from a JSON file, creating a default file if it doesn't exist.
+    
+    If the products file is not found, creates a new file with example products
+    from popular Polish tech stores.
+    
+    Args:
+        PRODUCTS_FILE: Path to the products JSON file
+        
+    Returns:
+        List of product dictionaries containing id, name, and shops information
+    """
     if not os.path.exists(PRODUCTS_FILE):
         with open(PRODUCTS_FILE, "w", encoding="utf-8") as f:
             json.dump(DEFAULT_PRODUCTS, f, indent=4, ensure_ascii=False)
@@ -51,7 +72,17 @@ DEFAULT_MYSQL_CONFIG = {
 
 
 def load_mysql_config(MYSQL_CONFIG):
-    """Load MySQL config from JSON file, if not create default file"""
+    """
+    Loads MySQL configuration from a JSON file, creating a default file if it doesn't exist.
+    
+    If the configuration file is not found, creates a new file with default localhost settings.
+    
+    Args:
+        MYSQL_CONFIG: Path to the MySQL configuration JSON file
+        
+    Returns:
+        Dictionary containing MySQL connection parameters (host, database, user, password, port)
+    """
     if not os.path.exists(MYSQL_CONFIG):
         with open(MYSQL_CONFIG, "w", encoding="utf-8") as f:
             json.dump(DEFAULT_MYSQL_CONFIG, f, indent=4, ensure_ascii=False)
@@ -90,7 +121,18 @@ DEFAULT_APP_CONFIG = {
 }
 
 def load_app_config(app_config_path):
-    """Load app config from JSON file, if not create default file"""
+    """
+    Loads application configuration from a JSON file, creating a default file if it doesn't exist.
+    
+    Configuration includes delay intervals, alert settings, and email notification parameters.
+    If the configuration file is not found, creates a new file with sensible defaults.
+    
+    Args:
+        app_config_path: Path to the application configuration JSON file
+        
+    Returns:
+        List of settings dictionaries containing interval, alerts, and email configuration
+    """
     if not os.path.exists(app_config_path):
         with open(app_config_path, "w", encoding="utf-8") as f:
             json.dump(DEFAULT_APP_CONFIG, f, indent=4, ensure_ascii=False)
