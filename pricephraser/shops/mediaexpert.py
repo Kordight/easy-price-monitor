@@ -1,11 +1,32 @@
+"""
+MediaExpert Price Parser
+
+This module extracts product prices from MediaExpert (mediaexpert.pl), a popular
+Polish electronics and home appliances retailer. Extracts pricing information from
+JSON-LD structured data embedded in product pages.
+"""
 import cloudscraper
 from bs4 import BeautifulSoup
 import json
 
-constant_price_divisor = 1 # media Expert usually flips decimal in prices; temporary solution, variable should be 1 or 100 value
+constant_price_divisor = 1 # MediaExpert usually flips decimal in prices; temporary solution, variable should be 1 or 100 value
 
 def get_price_mediaexpert(url):
-    """Downloads and parses the product page from MediaExpert to extract the price."""
+    """
+    Downloads and parses the product page from MediaExpert to extract the price.
+    
+    MediaExpert is a popular Polish electronics and home appliances retailer.
+    This function extracts pricing from JSON-LD structured data embedded in the page.
+    
+    Args:
+        url: Product page URL on mediaexpert.pl
+        
+    Returns:
+        Float representing the product price in PLN
+        
+    Raises:
+        Exception: If the page cannot be downloaded or price cannot be found
+    """
     scraper = cloudscraper.create_scraper()
     response = scraper.get(url)
     if response.status_code != 200:

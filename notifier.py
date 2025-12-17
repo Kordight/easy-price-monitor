@@ -1,3 +1,10 @@
+"""
+Email Notification Module for Easy Price Monitor
+
+This module handles sending email alerts when significant price changes are detected.
+Supports both SSL and STARTTLS SMTP connections, and can send to single or multiple
+recipients. Formats alerts as HTML emails with product links and detailed price information.
+"""
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -6,6 +13,19 @@ from storage import get_product_url_by_id_mysql, get_shop_id_by_name_mysql
 
 
 def send_email_alert(changes, smtp_config, email_from, email_to):
+    """
+    Sends email alerts for price changes.
+    
+    Supports both single and multiple recipients. Handles both SSL (port 465) and STARTTLS
+    (other ports) SMTP connections. Formats alerts as HTML emails with product links and
+    price change information.
+    
+    Args:
+        changes: List of dictionaries containing price change information
+        smtp_config: Dictionary with 'server', 'port', 'user', 'password' keys
+        email_from: Sender email address
+        email_to: Recipient email address (string) or list of recipient addresses
+    """
     if not changes:
         return
 
