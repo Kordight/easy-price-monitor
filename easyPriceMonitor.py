@@ -4,7 +4,7 @@ import random
 from time import sleep
 
 from pricephraser.core import get_price
-from storage import STORAGE_HANDLERS, get_changes_mysql, get_changes_csv, get_all_product_ids_mysql
+from storage import STORAGE_HANDLERS, get_changes_mysql, get_changes_csv, get_all_product_ids_mysql, get_product_id_by_url_mysql
 from visualization import PLOT_HANDLERS
 from utils import load_products, load_app_config
 from notifier import send_email_alert
@@ -15,6 +15,8 @@ DEFAULT_APP_CONFIG = "easyPrice_monitor_config.json"
 
 settings = load_app_config(DEFAULT_APP_CONFIG)
 interval = settings[0]["interval"][0] if settings[0].get("bUseDelayInterval") else None
+product_names = []
+
 
 def sleep_with_log(interval):
     """Random sleep delay"""
@@ -22,7 +24,6 @@ def sleep_with_log(interval):
     wait_until = datetime.now() + timedelta(seconds=time_to_wait)
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Waiting {time_to_wait}s until {wait_until.strftime('%Y-%m-%d %H:%M:%S')}")
     sleep(time_to_wait)
-
 
 def main():
     parser = argparse.ArgumentParser(description="Easy Price Monitor")
@@ -35,6 +36,7 @@ def main():
 
     for idx, product in enumerate(products):
         product_name = product["name"]
+        product_names.append(product_name)
         print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Monitoring product: {product_name}")
 
         for shop in product["shops"]:
@@ -91,7 +93,11 @@ def main():
                 handlers_used.append("MySQL")
                 PRODUCT_IDS = settings[0]["alerts"].get("ProductIDs", [])
                 if not PRODUCT_IDS:
-                    PRODUCT_IDS = get_all_product_ids_mysql()
+                    # If no specific product IDs are set, monitor all products from the products list
+                    for name in product_names:
+                        product_id = get_product_id_by_url_mysql(next((shop["url"] for prod in products if prod["name"] == name for shop in prod["shops"]), ""))
+                        if product_id:
+                            PRODUCT_IDS.append(product_id)
                 changes = get_changes_mysql(PRODUCT_IDS)
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Checking {len(PRODUCT_IDS)} product(s) for price changes in MySQL")
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Found {len(changes)} price record(s) in MySQL")

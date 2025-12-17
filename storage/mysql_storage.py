@@ -204,3 +204,15 @@ def get_product_url_by_id(db_config, product_id, shop_id):
     conn.close()
     return row[0] if row else None
 
+def get_product_id_by_name(db_config, product_name):
+    conn = mysql.connector.connect(**db_config)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT product_id 
+        FROM product_urls 
+        WHERE product_url = %s
+    """, (product_name,))
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return row[0] if row else None
