@@ -179,6 +179,14 @@ def main():
             pairs_str = ", ".join([f"{p} - {s}" for p, s in sorted(skipped_pairs)])
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Skipping {skipped_count} change(s) due to scrape errors: {pairs_str}")
     
+    # Filter out changes for products not included in the current run (e.g., legacy CSV entries)
+    if all_changes:
+        before_count = len(all_changes)
+        all_changes = [c for c in all_changes if c.get('product_name') in product_names]
+        if len(all_changes) != before_count:
+            removed = before_count - len(all_changes)
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Ignored {removed} change(s) for products not in current watchlist")
+    
     if all_changes:
         alerts = []
         for c in all_changes:
@@ -203,6 +211,12 @@ def main():
                           f"{abs(percent_float):.2f}% < {percent_threshold}%")
         
         if alerts:
+            # Debug preview of the first alert
+            try:
+                preview = {k: alerts[0].get(k) for k in ("product_name","shop_name","price","price_diff","percent_change","product_url","product_id")}
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Email alert preview: {preview}")
+            except Exception:
+                pass
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Sending {len(alerts)} alert(s) via email")
             send_email_alert(alerts, smtp_config, email_from, email_to)
         else:

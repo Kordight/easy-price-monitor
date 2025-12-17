@@ -10,6 +10,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from storage import get_product_url_by_id_mysql, get_shop_id_by_name_mysql
+from utils import load_products
 
 
 def send_email_alert(changes, smtp_config, email_from, email_to):
@@ -40,18 +41,73 @@ def send_email_alert(changes, smtp_config, email_from, email_to):
 
     subject = "[Easy Price Monitor] Alert: Price Change Detected"
     changed_products = []
+    changed_products_text = []
+
+    # Build fallback map from products.json in case URL is missing
+    try:
+      products = load_products("products.json")
+      url_fallback = {}
+      for p in products:
+        name = p.get("name")
+        for s in p.get("shops", []):
+          url_fallback[(name, s.get("name"))] = s.get("url")
+    except Exception:
+      url_fallback = {}
 
     for c in changes:
-        url = get_product_url_by_id_mysql(c['product_id'], get_shop_id_by_name_mysql(c['shop_name'])) if 'product_id' in c else c.get('product_url', '')
+      try:
+        # Prefer DB lookup when product_id present; otherwise use provided URL; finally fallback to products.json
+        if 'product_id' in c:
+          url = get_product_url_by_id_mysql(c['product_id'], get_shop_id_by_name_mysql(c['shop_name']))
+        else:
+          url = c.get('product_url', '')
+        if not url:
+          url = url_fallback.get((c.get('product_name'), c.get('shop_name')), '')
+
+        # Normalize numeric fields safely for display and arrows
+        try:
+          price_diff_val = float(c.get('price_diff', 0) or 0)
+        except Exception:
+          price_diff_val = 0.0
+        try:
+          percent_val = float(c.get('percent_change', 0) or 0)
+        except Exception:
+          percent_val = 0.0
+        arrow = '↑' if price_diff_val > 0 else '↓' if price_diff_val < 0 else '→'
+
         changed_products.append(
-            f"<li><a href='{url}'>{c['product_name']}</a> at {c['shop_name']}: "
-            f"(change: <b>{c['price_diff']} {c['currency']}, {c['percent_change']} % change {'↑' if c['price_diff'] > 0 else '↓' if c['price_diff'] < 0 else '→'})</b>"
-            f"<br> Current price <b>{c['price']}</b></li>"
+          f"<li><a href='{url}'>{c.get('product_name','(unknown)')}</a> at {c.get('shop_name','(unknown)')}: "
+          f"(change: <b>{price_diff_val:+.2f} {c.get('currency','')}</b>, {percent_val:+.2f}% {arrow})"
+          f"<br> Current price <b>{c.get('price','')}</b></li>"
+        )
+        changed_products_text.append(
+          f"- {c.get('product_name','(unknown)')} at {c.get('shop_name','(unknown)')}: "
+          f"{price_diff_val:+.2f} {c.get('currency','')} ({percent_val:+.2f}%), now {c.get('price','')}\n  {url}"
+        )
+      except Exception as item_err:
+        # Best-effort: include minimal info even if some fields are missing
+        changed_products.append(
+          f"<li>{c.get('product_name','(unknown)')} at {c.get('shop_name','(unknown)')} (details unavailable)</li>"
+        )
+        changed_products_text.append(
+          f"- {c.get('product_name','(unknown)')} at {c.get('shop_name','(unknown)')} (details unavailable)"
         )
 
-    changed_products = "".join(changed_products)
+    # Log how many items will be included
+    try:
+      from datetime import datetime as _dt
+      print(f"[{_dt.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Preparing email with {len(changed_products)} alert item(s)")
+    except Exception:
+      pass
 
-    msg = MIMEMultipart()
+    # Ensure the report never renders empty for recipients
+    if not changed_products:
+      changed_products.append("<li>No detailed items available. Check logs for filtering.</li>")
+      changed_products_text.append("(No detailed items available. Check logs for filtering.)")
+    changed_products = "".join(changed_products)
+    changed_products_text = "\n".join(changed_products_text)
+
+    msg = MIMEMultipart('alternative')
     msg["From"] = email_from
     msg["To"] = email_to_header
     msg["Subject"] = subject
@@ -142,7 +198,15 @@ def send_email_alert(changes, smtp_config, email_from, email_to):
     </html>
     """
 
-    msg.attach(MIMEText(body, "html"))
+    # Attach plain text alternative and HTML with UTF-8 encoding
+    text_body = (
+      "Price Change Detected\n\n" +
+      "Updates:\n" +
+      changed_products_text +
+      "\n\nBest regards,\nEasy Price Monitor\n"
+    )
+    msg.attach(MIMEText(text_body, "plain", "utf-8"))
+    msg.attach(MIMEText(body, "html", "utf-8"))
 
     port = smtp_config["port"]
     
