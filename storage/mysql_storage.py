@@ -116,9 +116,14 @@ def save_price_mysql(results, db_config, commit_every=500):
             conn.close()
 
 def get_price_changes(db_config, product_ids):
+    # Guard against empty list to avoid SQL 'IN ()' syntax error
+    if not product_ids:
+        return []
+
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor(dictionary=True)
 
+    placeholders = ",".join(["%s"] * len(product_ids))
     query = f"""
         SELECT *
         FROM (
@@ -150,14 +155,14 @@ def get_price_changes(db_config, product_ids):
             JOIN products p ON p.id = pr.product_id
             JOIN shops s ON s.id = pr.shop_id
             JOIN product_urls pd ON pd.product_id = pr.product_id AND pd.shop_id = pr.shop_id
-            WHERE pr.product_id IN ({",".join(map(str, product_ids))})
+            WHERE pr.product_id IN ({placeholders})
         ) t
         WHERE rn = 1
         ORDER BY timestamp DESC;
 
     """
 
-    cursor.execute(query)
+    cursor.execute(query, tuple(product_ids))
     rows = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -208,9 +213,9 @@ def get_product_id_by_name(db_config, product_name):
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT product_id 
-        FROM product_urls 
-        WHERE product_url = %s
+        SELECT id
+        FROM products
+        WHERE name = %s
     """, (product_name,))
     row = cursor.fetchone()
     cursor.close()

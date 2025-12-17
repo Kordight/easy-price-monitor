@@ -4,7 +4,7 @@ import random
 from time import sleep
 
 from pricephraser.core import get_price
-from storage import STORAGE_HANDLERS, get_changes_mysql, get_changes_csv, get_all_product_ids_mysql, get_product_id_by_url_mysql
+from storage import STORAGE_HANDLERS, get_changes_mysql, get_changes_csv, get_all_product_ids_mysql, get_product_id_by_name_mysql
 from visualization import PLOT_HANDLERS
 from utils import load_products, load_app_config
 from notifier import send_email_alert
@@ -33,6 +33,8 @@ def main():
     products = load_products(PRODUCTS_FILE)
 
     results = []
+    # Keep track of product-shop pairs that failed during this run
+    scrape_errors = set()
 
     for idx, product in enumerate(products):
         product_name = product["name"]
@@ -52,6 +54,8 @@ def main():
                 })
             except Exception as e:
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] {product_name} - {shop['name']}: {e}")
+                # Mark this product-shop as errored to ignore in alerts
+                scrape_errors.add((product_name, shop['name']))
         
         # Random delay between products (not after the last product)
         if interval and idx < len(products) - 1:
@@ -95,7 +99,7 @@ def main():
                 if not PRODUCT_IDS:
                     # If no specific product IDs are set, monitor all products from the products list
                     for name in product_names:
-                        product_id = get_product_id_by_url_mysql(next((shop["url"] for prod in products if prod["name"] == name for shop in prod["shops"]), ""))
+                        product_id = get_product_id_by_name_mysql(name)
                         if product_id:
                             PRODUCT_IDS.append(product_id)
                 changes = get_changes_mysql(PRODUCT_IDS)
@@ -126,6 +130,23 @@ def main():
         
         if len(handlers_used) > 1:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Consolidated {len(all_changes)} unique price change(s) from {' and '.join(handlers_used)}")
+
+    # If any product-shop failed in this run, ignore them in alerts
+    if all_changes and scrape_errors:
+        before = len(all_changes)
+        filtered = []
+        skipped_pairs = set()
+        for c in all_changes:
+            key = (c['product_name'], c['shop_name'])
+            if key in scrape_errors:
+                skipped_pairs.add(key)
+            else:
+                filtered.append(c)
+        all_changes = filtered
+        if skipped_pairs:
+            skipped_count = before - len(all_changes)
+            pairs_str = ", ".join([f"{p} - {s}" for p, s in sorted(skipped_pairs)])
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Skipping {skipped_count} change(s) due to scrape errors: {pairs_str}")
     
     if all_changes:
         alerts = []
