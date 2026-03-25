@@ -1,3 +1,10 @@
+"""
+X-Kom Price Parser
+
+This module extracts product prices from X-Kom (x-kom.pl), a popular
+Polish electronics retailer. Uses data-name and aria-label attributes
+for robust price extraction that survives CSS class changes.
+"""
 import cloudscraper
 from bs4 import BeautifulSoup
 import re
