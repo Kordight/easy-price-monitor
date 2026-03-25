@@ -28,7 +28,7 @@ def get_price_xkom(url):
     raw_price = price_span.get('aria-label')
 
     # Clean the price string by removing non-numeric characters and replacing comma with dot
-    clean_price = raw_price.replace("Cena:", "").replace("zł", "").replace(" ", "").replace("\xa0", "").strip()
+    clean_price = re.sub(r"[^\d,\.]", "", raw_price or "")
     
     # Replace comma with dot for decimal separator
     clean_price = clean_price.replace(",", ".")
