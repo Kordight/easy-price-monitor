@@ -67,6 +67,9 @@ def main():
 
     for idx, product in enumerate(products):
         product_name = product["name"]
+        if not product_name or product["monitor"] is False:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] Product at index {idx} has no name or is disabled. Skipping.")
+            continue
         product_names.append(product_name)
         print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Monitoring product: {product_name}")
 
