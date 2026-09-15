@@ -190,3 +190,5 @@ mysql_config.json
 easyPrice_monitor_config.json
 .idea/workspace.xml
 /backups/
+test_monitor_behavior.py
+simple_test.py

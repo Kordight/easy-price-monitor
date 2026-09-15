@@ -66,33 +66,36 @@ def main():
     scrape_errors = set()
 
     for idx, product in enumerate(products):
-        product_name = product["name"]
-        if not product_name or product["monitor"] is False:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] Product at index {idx} has no name or is disabled. Skipping.")
-            continue
-        product_names.append(product_name)
-        print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Monitoring product: {product_name}")
+         product_name = product.get("name")
+         if not product_name:
+             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] Product at index {idx} has no name. Skipping.")
+             continue
+         monitor = product.get("monitor", True)
+         if monitor is False:
+             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Product at index {idx} is disabled. Skipping.")
+             continue
+         product_names.append(product_name)
+         print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Monitoring product: {product_name}")
 
-        for shop in product["shops"]:
-            try:
-                price = get_price(shop)
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] {product_name} - {shop['name']}: {price} PLN")
-                results.append({
-                    "product": product_name,
-                    "shop": shop["name"],
-                    "price": price,
-                    "date": datetime.now().isoformat(),
-                    "product_url": shop["url"]
-                })
-            except Exception as e:
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] {product_name} - {shop['name']}: {e}")
-                # Mark this product-shop as errored to ignore in alerts
-                scrape_errors.add((product_name, shop['name']))
-        
-        # Random delay between products (not after the last product)
-        if interval and idx < len(products) - 1:
-            sleep_with_log(interval)
-
+         for shop in product["shops"]:
+             try:
+                 price = get_price(shop)
+                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] {product_name} - {shop['name']}: {price} PLN")
+                 results.append({
+                     "product": product_name,
+                     "shop": shop["name"],
+                     "price": price,
+                     "date": datetime.now().isoformat(),
+                     "product_url": shop["url"]
+                 })
+             except Exception as e:
+                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] {product_name} - {shop['name']}: {e}")
+                 # Mark this product-shop as errored to ignore in alerts
+                 scrape_errors.add((product_name, shop['name']))
+         
+         # Random delay between products (not after the last product)
+         if interval and idx < len(products) - 1:
+             sleep_with_log(interval)
     # dynamic handlers execution
     if args.handlers:
         for handler_name in args.handlers:
