@@ -1,14 +1,13 @@
 # Easy Price Monitor
 
 **Easy Price Monitor** is a tool for tracking and monitoring product prices from various online sources.  
-It is designed to track prices from multiple sites using easy-to-extend plugins. Currently, the tool supports popular tech stores in Poland.
+It tracks products from multiple sites using easy-to-extend plugins. Currently, the tool supports popular tech stores in Poland, including x-kom and MediaExpert.
 
 ---
 
 ## Disclaimer
 
-This tool provides **no visual representation of collected data**.  
-However, in [docs/grafana.md](docs/grafana.md) you can find a template to visually represent price history for selected products.
+The tool stores price history in CSV and/or MySQL. It can also generate a price-history plot with the `default` handler. For a Grafana-based view, see the template in [docs/grafana.md](docs/grafana.md).
 
 ---
 
@@ -22,6 +21,9 @@ However, in [docs/grafana.md](docs/grafana.md) you can find a template to visual
 - **Built-in email alerting system for both MySQL and CSV**
 - **Support for multiple email recipients**
 - **Automatic alert consolidation when using multiple handlers**
+- Enable or disable monitoring for individual products
+- Enable email notifications globally or for selected products
+- Randomized delays between product requests
 
 ---
 
@@ -59,8 +61,8 @@ You can use the tool in **two ways**:
    ./save_prices.sh
    ```
 
-   **Warning:** By default, this script also saves data to the database.  
-    Make sure to check the `scheduled_price_scraping.md` section or disable it by changing the desired handlers (line 53):  
+  **Warning:** By default, this script also saves data to the database.
+   Make sure to check the [scheduled price scraping guide](docs/scheduled_price_scraping.md) or disable it by changing the desired handlers:
 
     ```bash
     $PYTHON_BIN "$SCRIPT_PATH" --handlers mysql csv
@@ -69,12 +71,24 @@ You can use the tool in **two ways**:
    Run the script with:
 
    ```bash
-   python easyPriceMonitor.py --handlers [csv,mysql]
+  python easyPriceMonitor.py --handlers csv mysql
    ```
 
    Example:
    - `python easyPriceMonitor.py --handlers csv mysql` 
    - `python easyPriceMonitor.py --handlers mysql`
+  - `python easyPriceMonitor.py --handlers csv default`
+
+  `--handlers` accepts one or more space-separated handlers:
+  - `csv` saves prices to `price_history.csv`
+  - `mysql` saves prices to MySQL
+  - `default` generates the price-history plot
+
+  Email alerts are checked using changes from the selected `csv` and/or `mysql` handlers. Add `--notify` to enable alerts for every monitored product:
+
+  ```bash
+  python easyPriceMonitor.py --handlers csv mysql --notify
+  ```
 
 ---
 
@@ -91,6 +105,8 @@ This file is **automatically created if it does not exist**.
     {
       "id": 1,
       "name": "ASRock X870 Pro RS",
+      "monitor": true,
+      "notify_on_change": true,
       "shops": [
         {
           "name": "x-kom",
@@ -111,6 +127,13 @@ This file is **automatically created if it does not exist**.
   ]
 }
 ```
+
+Product fields:
+- `monitor`: when `false`, the product is skipped and is not scraped. If omitted, it defaults to `true`.
+- `notify_on_change`: when `true`, an eligible price change for this product can trigger an email. If omitted, it defaults to `false`.
+- `shops`: one or more supported shops and their product URLs.
+
+Use `--notify` to override the per-product notification setting for the current run. Without `--notify`, only products with `notify_on_change: true` can send alerts. A change must also meet `percentDropThreshold`, and `bEnableAlerts` must be `true`.
 
 ---
 
@@ -177,6 +200,10 @@ This file is **automatically created if it does not exist**.
 - `ProductIDs`: List of specific product IDs to monitor, or empty array `[]` for all products
 - `email.to`: Can be a single email address as a string, or an array of multiple recipients
 - **When using both CSV and MySQL handlers**, only one consolidated email will be sent
+- Email alerts require either the `--notify` command-line flag or `notify_on_change: true` on the affected product
+- The threshold applies to both price increases and decreases; the absolute percentage change must meet or exceed the configured value
+
+The `save_prices.sh` script runs the monitor with `--handlers mysql csv`. It uses its own directory as the project directory by default; set `PROJECT_DIR` when launching it from another location. The script does not pass `--notify`, so scheduled runs only email for products explicitly marked with `notify_on_change: true`.
 
 ---
 

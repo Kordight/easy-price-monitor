@@ -11,12 +11,12 @@ On Linux systems we use the provided **shell script** (`save_prices.sh`) togethe
 chmod +x save_prices.sh
 ````
 
-### 2. Edit the script
+### 2. Set the project directory (optional)
 
-Open `save_prices.sh` and update the following line to match your environment:
+The script uses its own directory as `PROJECT_DIR` by default. If you want to run it from another checkout or override the location, export `PROJECT_DIR` before starting it:
 
 ```bash
-PROJECT_DIR="/path/to/Easy-Price-Monitor"
+PROJECT_DIR="/path/to/Easy-Price-Monitor" ./save_prices.sh
 ```
 
 ### 3. Run the script manually (test)

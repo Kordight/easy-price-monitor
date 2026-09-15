@@ -57,9 +57,15 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Easy Price Monitor")
     parser.add_argument("--handlers", nargs="+", help="List of handlers to run  (csv, mysql, default)")
+    parser.add_argument("--notify", action="store_true", help="Enable notifications for all products")
     args = parser.parse_args()
 
     products = load_products(PRODUCTS_FILE)
+    notify_products = {
+        product.get("name")
+        for product in products
+        if product.get("name") and product.get("notify_on_change", False)
+    }
 
     results = []
     # Keep track of product-shop pairs that failed during this run
@@ -192,41 +198,46 @@ def main():
         if len(all_changes) != before_count:
             removed = before_count - len(all_changes)
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Ignored {removed} change(s) for products not in current watchlist")
-    
+
     if all_changes:
         alerts = []
-        for c in all_changes:
-            percent = c.get("percent_change")
-            price_diff = c.get("price_diff")
-            if percent is not None:
-                percent_float = float(percent)
-                diff_float = float(price_diff) if price_diff is not None else 0.0
-                direction = "↑" if diff_float > 0 else "↓" if diff_float < 0 else "→"
-                
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Price change detected: "
-                      f"{c['product_name']} at {c['shop_name']}: "
-                      f"{diff_float:+.2f} PLN ({percent_float:+.2f}%) {direction} "
-                      f"Current: {c['price']} PLN")
-                
-                if abs(percent_float) >= percent_threshold:
-                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ALERT] Threshold exceeded for {c['product_name']}: "
-                          f"{abs(percent_float):.2f}% >= {percent_threshold}%")
-                    alerts.append(c)
-                else:
-                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Below threshold: "
-                          f"{abs(percent_float):.2f}% < {percent_threshold}%")
-        
+        for change in all_changes:
+            percent = change.get("percent_change")
+            price_diff = change.get("price_diff")
+            if percent is None:
+                continue
+
+            percent_float = float(percent)
+            diff_float = float(price_diff) if price_diff is not None else 0.0
+            direction = "↑" if diff_float > 0 else "↓" if diff_float < 0 else "→"
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Price change detected: "
+                  f"{change['product_name']} at {change['shop_name']}: "
+                  f"{diff_float:+.2f} PLN ({percent_float:+.2f}%) {direction} "
+                  f"Current: {change['price']} PLN")
+
+            if abs(percent_float) < percent_threshold:
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Below threshold: "
+                      f"{abs(percent_float):.2f}% < {percent_threshold}%")
+                continue
+
+            if args.notify or change.get("product_name") in notify_products:
+                alerts.append(change)
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ALERT] Threshold exceeded for {change['product_name']}: "
+                      f"{abs(percent_float):.2f}% >= {percent_threshold}%")
+            else:
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Notification skipped for {change['product_name']}; "
+                      "use --notify or set notify_on_change to true")
+
         if alerts:
-            # Debug preview of the first alert
             try:
-                preview = {k: alerts[0].get(k) for k in ("product_name","shop_name","price","price_diff","percent_change","product_url","product_id")}
+                preview = {key: alerts[0].get(key) for key in ("product_name", "shop_name", "price", "price_diff", "percent_change", "product_url", "product_id")}
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Email alert preview: {preview}")
             except Exception:
                 pass
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Sending {len(alerts)} alert(s) via email")
             send_email_alert(alerts, smtp_config, email_from, email_to)
         else:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] No price changes exceeded the alert threshold")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] No price changes exceeded the alert threshold or enabled notification filters")
     else:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] No price changes detected")
 
