@@ -62,7 +62,7 @@ init_venv
 log "Starting script"
 
 if [[ -f "$SCRIPT_PATH" ]]; then
-    "$PYTHON_BIN" "$SCRIPT_PATH" --handlers mysql csv
+    "$PYTHON_BIN" "$SCRIPT_PATH" --handlers mysql csv --notify
 else
     log "ERROR: Script file '$SCRIPT_PATH' not found!"
     exit 1

@@ -57,7 +57,11 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Easy Price Monitor")
     parser.add_argument("--handlers", nargs="+", help="List of handlers to run  (csv, mysql, default)")
-    parser.add_argument("--notify", action="store_true", help="Enable notifications for all products")
+    parser.add_argument(
+        "--notify",
+        action="store_true",
+        help="Enable email notifications for this run; per-product notify_on_change settings still apply"
+    )
     args = parser.parse_args()
 
     products = load_products(PRODUCTS_FILE)
@@ -113,6 +117,9 @@ def main():
             else:
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] Invalid handler: {handler_name}")
     alerts_config = settings[0]["alerts"]
+    if not args.notify:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Email notifications are disabled for this run. Use --notify to enable them.")
+        return
     if not alerts_config.get("bEnableAlerts", True):
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Alerts are disabled in config.")
         return
@@ -220,13 +227,13 @@ def main():
                       f"{abs(percent_float):.2f}% < {percent_threshold}%")
                 continue
 
-            if args.notify or change.get("product_name") in notify_products:
+            if change.get("product_name") in notify_products:
                 alerts.append(change)
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ALERT] Threshold exceeded for {change['product_name']}: "
                       f"{abs(percent_float):.2f}% >= {percent_threshold}%")
             else:
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Notification skipped for {change['product_name']}; "
-                      "use --notify or set notify_on_change to true")
+                      "set notify_on_change to true")
 
         if alerts:
             try:

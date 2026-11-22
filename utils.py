@@ -17,6 +17,8 @@ DEFAULT_PRODUCTS = {
         {
             "id": 1,
             "name": "ASRock X870 Pro RS",
+            "monitor": True,
+            "notify_on_change": False,
             "shops": [
                 {
                     "name": "x-kom",
@@ -27,6 +29,8 @@ DEFAULT_PRODUCTS = {
         {
             "id": 2,
             "name": "Gembird CR2032 (2szt)",
+            "monitor": True,
+            "notify_on_change": False,
             "shops": [
                 {
                     "name": "x-kom",

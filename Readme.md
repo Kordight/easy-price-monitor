@@ -84,7 +84,7 @@ You can use the tool in **two ways**:
   - `mysql` saves prices to MySQL
   - `default` generates the price-history plot
 
-  Email alerts are checked using changes from the selected `csv` and/or `mysql` handlers. Add `--notify` to enable alerts for every monitored product:
+  Email alerts are checked using changes from the selected `csv` and/or `mysql` handlers. Add `--notify` to enable email alerts for this run:
 
   ```bash
   python easyPriceMonitor.py --handlers csv mysql --notify
@@ -133,7 +133,7 @@ Product fields:
 - `notify_on_change`: when `true`, an eligible price change for this product can trigger an email. If omitted, it defaults to `false`.
 - `shops`: one or more supported shops and their product URLs.
 
-Use `--notify` to override the per-product notification setting for the current run. Without `--notify`, only products with `notify_on_change: true` can send alerts. A change must also meet `percentDropThreshold`, and `bEnableAlerts` must be `true`.
+Use `--notify` as the instance-level switch. It is off by default and disables email sending for the entire run. When it is on, only products with `notify_on_change: true` are reported. A change must also meet `percentDropThreshold`, and `bEnableAlerts` must be `true`.
 
 ---
 
@@ -200,10 +200,10 @@ This file is **automatically created if it does not exist**.
 - `ProductIDs`: List of specific product IDs to monitor, or empty array `[]` for all products
 - `email.to`: Can be a single email address as a string, or an array of multiple recipients
 - **When using both CSV and MySQL handlers**, only one consolidated email will be sent
-- Email alerts require either the `--notify` command-line flag or `notify_on_change: true` on the affected product
+- Email alerts require `--notify` for the current run and `notify_on_change: true` on the affected product
 - The threshold applies to both price increases and decreases; the absolute percentage change must meet or exceed the configured value
 
-The `save_prices.sh` script runs the monitor with `--handlers mysql csv`. It uses its own directory as the project directory by default; set `PROJECT_DIR` when launching it from another location. The script does not pass `--notify`, so scheduled runs only email for products explicitly marked with `notify_on_change: true`.
+The `save_prices.sh` script runs the monitor with `--handlers mysql csv`. It uses its own directory as the project directory by default; set `PROJECT_DIR` when launching it from another location. The script does not pass `--notify`, so scheduled runs do not send email alerts unless the script is updated to include `--notify`.
 
 ---
 
