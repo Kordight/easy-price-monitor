@@ -107,6 +107,7 @@ This file is **automatically created if it does not exist**.
       "name": "ASRock X870 Pro RS",
       "monitor": true,
       "notify_on_change": true,
+      "notify_on_anomaly": true,
       "shops": [
         {
           "name": "x-kom",
@@ -131,9 +132,12 @@ This file is **automatically created if it does not exist**.
 Product fields:
 - `monitor`: when `false`, the product is skipped and is not scraped. If omitted, it defaults to `true`.
 - `notify_on_change`: when `true`, an eligible price change for this product can trigger an email. If omitted, it defaults to `false`.
+- `notify_on_anomaly`: when `true`, a price change of at least `anomalyThresholdPercent` can trigger an email even if `notify_on_change` is `false`.
 - `shops`: one or more supported shops and their product URLs.
 
-Use `--notify` as the instance-level switch. It is off by default and disables email sending for the entire run. When it is on, only products with `notify_on_change: true` are reported. A change must also meet `percentDropThreshold`, and `bEnableAlerts` must be `true`.
+Use `--notify` as the instance-level switch. It is off by default and disables email sending for the entire run. When it is on, products with `notify_on_change: true` are reported normally. A normal change must meet `percentDropThreshold`, and `bEnableAlerts` must be `true`.
+
+Extreme price changes are additionally reported for products with `notify_on_anomaly: true` when the absolute percentage change reaches `anomalyThresholdPercent`, even if `notify_on_change` is `false`.
 
 ---
 
@@ -197,6 +201,7 @@ This file is **automatically created if it does not exist**.
 **Notes:**
 - `bEnableAlerts`: Enable or disable email alerts
 - `percentDropThreshold`: Minimum percentage change to trigger an alert (e.g., 3.5 means ±3.5%)
+- `anomalyThresholdPercent`: Minimum absolute percentage change for anomaly alerts (default 90)
 - `ProductIDs`: List of specific product IDs to monitor, or empty array `[]` for all products
 - `email.to`: Can be a single email address as a string, or an array of multiple recipients
 - **When using both CSV and MySQL handlers**, only one consolidated email will be sent

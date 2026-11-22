@@ -19,6 +19,7 @@ DEFAULT_PRODUCTS = {
             "name": "ASRock X870 Pro RS",
             "monitor": True,
             "notify_on_change": False,
+            "notify_on_anomaly": True,
             "shops": [
                 {
                     "name": "x-kom",
@@ -31,6 +32,7 @@ DEFAULT_PRODUCTS = {
             "name": "Gembird CR2032 (2szt)",
             "monitor": True,
             "notify_on_change": False,
+            "notify_on_anomaly": True,
             "shops": [
                 {
                     "name": "x-kom",
@@ -110,6 +112,7 @@ DEFAULT_APP_CONFIG = {
             "alerts": {
                 "bEnableAlerts": True,
                 "percentDropThreshold": 3.5,
+                "anomalyThresholdPercent": 90,
                 "ProductIDs": []  # empty list means all products
             },
             "email": {

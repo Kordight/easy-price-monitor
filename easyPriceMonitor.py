@@ -70,6 +70,11 @@ def main():
         for product in products
         if product.get("name") and product.get("notify_on_change", False)
     }
+    anomaly_products = {
+        product.get("name")
+        for product in products
+        if product.get("name") and product.get("notify_on_anomaly", False)
+    }
 
     results = []
     # Keep track of product-shop pairs that failed during this run
@@ -124,7 +129,9 @@ def main():
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Alerts are disabled in config.")
         return
     percent_threshold = alerts_config["percentDropThreshold"]
+    anomaly_threshold = float(alerts_config.get("anomalyThresholdPercent", 90))
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Alert threshold set to {percent_threshold}%")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Anomaly threshold set to {anomaly_threshold}%")
     smtp_config = {
         "server": settings[0]["email"]["smtpServer"],
         "port": settings[0]["email"]["smtpPort"],
@@ -222,15 +229,25 @@ def main():
                   f"{diff_float:+.2f} PLN ({percent_float:+.2f}%) {direction} "
                   f"Current: {change['price']} PLN")
 
-            if abs(percent_float) < percent_threshold:
+            absolute_percent = abs(percent_float)
+            is_anomaly = (
+                absolute_percent >= anomaly_threshold
+                and change.get("product_name") in anomaly_products
+            )
+
+            if not is_anomaly and absolute_percent < percent_threshold:
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Below threshold: "
-                      f"{abs(percent_float):.2f}% < {percent_threshold}%")
+                      f"{absolute_percent:.2f}% < {percent_threshold}%")
                 continue
 
-            if change.get("product_name") in notify_products:
+            if is_anomaly or change.get("product_name") in notify_products:
                 alerts.append(change)
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ALERT] Threshold exceeded for {change['product_name']}: "
-                      f"{abs(percent_float):.2f}% >= {percent_threshold}%")
+                if is_anomaly:
+                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ALERT] Anomaly detected for {change['product_name']}: "
+                          f"{absolute_percent:.2f}% >= {anomaly_threshold}%")
+                else:
+                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ALERT] Threshold exceeded for {change['product_name']}: "
+                          f"{absolute_percent:.2f}% >= {percent_threshold}%")
             else:
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Notification skipped for {change['product_name']}; "
                       "set notify_on_change to true")
